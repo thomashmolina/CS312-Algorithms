@@ -75,7 +75,7 @@ def fermat(N: int, k: int) -> str:
     # 2, 3 are prime
     if N <= 3:  # O(1)
         return 'prime'
-    if is_carmichael_number(N):  # O(n^2)
+    if is_carmichael_number(N):  #  O(n^2)
         return 'carmichael'
 
     while k > 0:  # total = k * (O(log n) + O(log n * a) + O(n^2)
