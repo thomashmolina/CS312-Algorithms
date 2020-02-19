@@ -12,11 +12,6 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 
-#TODO: Error checking on txt boxes
-#TODO: Color strings
-
-
-# Import the code with the actual implementation
 from convex_hull import *
 
 PAUSE = 0.25
@@ -30,17 +25,12 @@ class PointLineView( QWidget ):
         self.lineList   = {}
         self.status_bar = status_bar
 
-        #self.drawThread = DrawingThread( self )
-        #self.drawThread.start()
 
-    #doredraw = pyqtSignal()
 
     def displayStatusText(self, text):
         self.status_bar.showMessage(text)
-        #self.repaint()
 
     def clearPoints(self):
-        #print('POINTS CLEARED!')
         self.pointList = {}
 
     def clearLines(self, lines=None):
@@ -54,7 +44,6 @@ class PointLineView( QWidget ):
                     except:
                         pass    
         self.repaint()
-        #time.sleep(PAUSE)
 
     def addPoints( self, point_list, color ):
         if color in self.pointList:
@@ -71,7 +60,6 @@ class PointLineView( QWidget ):
         time.sleep(PAUSE)
 
     def paintEvent(self, event):                          
-        #print('Paint!!!')
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing,True)
 
@@ -161,13 +149,11 @@ class Proj2GUI( QMainWindow ):
         return ptlist
 
     def clearClicked(self):
-        #print('clearClicked')
         self.view.clearLines()
         self.solveButton.setEnabled(True)
         self.view.repaint()                                
 
     def generateClicked(self):                                                
-        #print('generateClicked')
         if self.points:
                 self.view.clearPoints()
                 self.view.clearLines()
@@ -180,8 +166,6 @@ class Proj2GUI( QMainWindow ):
         self.view.repaint()
 
     def solveClicked(self):
-        #print('solveClicked')
-        #self.solver.compute_hull(self.points)
         print('-'*80)
         solver_thread = ConvexHullSolverThread(self.points,self.showRecursion.isChecked())
         solver_thread.show_hull.connect(self.view.addLines)
