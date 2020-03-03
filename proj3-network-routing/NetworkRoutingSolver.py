@@ -6,42 +6,47 @@ import time
 
 
 class NetworkRoutingSolver:
-    def __init__( self ):
+    def __init__(self):
         pass
 
-    def initializeNetwork( self, network ):
-        assert( type(network) == CS312Graph )
+    def initializeNetwork(self, network):
+        assert(type(network) == CS312Graph)
         self.network = network
+        self.paths = None
+        self.previous = None
+        self.costs = None
 
-    def getShortestPath( self, destIndex ):
+    def getShortestPath(self, destIndex):
         self.dest = destIndex
+        edges = []
+        start_node, end_node = self.network.nodes[self.source], self.network.nodes[destIndex]
+        while end_node is not None:
+            prev_node = self.previous[end_node]
+            edge = end_node.neighbors.index(prev_node)
+            edges.append(edge)
 
         # TODO: RETURN THE SHORTEST PATH FOR destIndex
         #       INSTEAD OF THE DUMMY SET OF EDGES BELOW
         #       IT'S JUST AN EXAMPLE OF THE FORMAT YOU'LL 
         #       NEED TO USE
-
-        path_edges = []
-        total_length = 0
-        node = self.network.nodes[self.source]
-        edges_left = 3
-        while edges_left > 0:
-            edge = node.neighbors[2]
-            path_edges.append( (edge.src.loc, edge.dest.loc, '{:.0f}'.format(edge.length)) )
-            total_length += edge.length
-            node = edge.dest
-            edges_left -= 1
-        return {'cost':total_length, 'path':path_edges}
-
+    ''' 
+    path_edges = []
+    total_length = 0
+    node = self.network.nodes[self.source]
+    edges_left = 3
+    while edges_left > 0:
+    edge = node.neighbors[2]
+    path_edges.append((edge.src.loc, edge.dest.loc, '{:.0f}'.format(edge.length)))
+    total_length += edge.length
+    node = edge.dest
+    edges_left -= 1
+    '''
     def computeShortestPaths( self, srcIndex, use_heap=False ):
         self.source = srcIndex
         t1 = time.time()
-        self.dijkstra(self.network.nodes[srcIndex])
-        # TODO: RUN DIJKSTRA'S TO DETERMINE SHORTEST PATHS.
-        #       ALSO, STORE THE RESULTS FOR THE SUBSEQUENT
-        #       CALL TO getShortestPath(dest_index)
-
-
+        paths = self.dijkstra(self.network.nodes[srcIndex])
+        self.previous = paths['previous']
+        self.costs = paths['costs']
         t2 = time.time()
         return (t2-t1)
 
@@ -52,40 +57,47 @@ class NetworkRoutingSolver:
             dist[node] = float("Inf")
             prev[node] = None
         dist[s] = 0
-        H = [x for x in self.network.nodes[::-1]]
-        while H:
-            u = H.pop()
+        H = self.make_queue(self.network.nodes, dist)
+        while len(H.heap) != 1:
+            u = H.delete_min()[0]
             for neighbor in u.neighbors:
                 if dist[neighbor.dest] > dist[u] + neighbor.length:
                     dist[neighbor.dest] = dist[u] + neighbor.length
                     prev[neighbor.dest] = u
-                    self.decreasekey(H, neighbor, dist[u] + neighbor.length)
+                    H.decrease_key((neighbor.dest, dist[u] + neighbor.length), H.indicies[neighbor.dest])
+        return {'costs': dist, 'previous': prev}
 
-    def makequeue(self, start, nodes):
-        pass
+    def make_queue(self, nodes, dist):
+        return BinaryMinHeap(nodes, dist)
 
 
 class BinaryMinHeap:
-    def __init__(self, source, network):
-        self.LEFT_BRANCH = 2
-        self.RIGHT_BRANCH = 2
+    def __init__(self, network, dist_values):
         self.heap = [None,]
-        self.heap.append(source)
         self.end_position = 1
         self.root = 1
-        for node in network:
-            self.insert(node)
+        self.indicies = {}
+        for node in dist_values:
+            self.insert(node, dist_values[node])
 
-    def insert(self, node):
-        self.heap.append(node)
-        self.end_position += 1
-        self.bubble_up(self.end_position)
+    def insert(self, node, length):
+        if len(self.heap) == 1:
+            self.heap.append((node, length))
+            self.indicies[node] = 1
+            return 1
+        else:
+            self.heap.append((node, length))
+            self.bubble_up((node, length), len(self.heap)-1)
 
     def right_child(self, position):
-        return self.heap[2 * position + 1]
+        if 2 * position + 1 < len(self.heap):
+            return self.heap[2 * position + 1]
+        return None
 
     def left_child(self, position):
-        return self.heap[2 * position]
+        if 2 * position < len(self.heap):
+            return self.heap[2 * position]
+        return None
 
     def parent(self, position):
         return self.heap[position // 2]
@@ -102,60 +114,59 @@ class BinaryMinHeap:
     def left_child_index(position):
         return 2 * position
 
-    def bubble_up(self, position):
-        parent_index = self.parent_index(position)
-        if parent_index <= 0:
-            return
-        child = self.heap[position]
-        parent = self.parent(position)
-        if self.parent(position) > child:
-            child_index = position
-            self.heap[parent_index] = child
-            self.heap[child_index] = parent
-            self.bubble_up(parent_index)
+    def bubble_up(self, x, i):
+        p = i//2
+        while i != 1 and self.heap[p][1] > x[1]:
+            self.heap[i] = self.heap[p]
+            self.indicies[self.heap[i][0]] = p
+            self.indicies[self.heap[p][0]] = i
+            i = p
+            p = i // 2
+        self.heap[i] = x
+        self.indicies[self.heap[i][0]] = i
 
-    def decrease_key(self, target, new_value):
-        index = self.find(self.heap[self.root], target)
-        self.heap[index] = new_value
-        self.bubble_up(index)
+    def decrease_key(self, x, i):
+        self.heap[self.indicies[x[0]]] = x
+        self.bubble_up(x, i)
 
     def delete_min(self):
-        min_value = self.heap[1]
-        max_value = self.heap.pop()
-        self.heap[1] = max_value
-        self.trickle_down(1)
-        return min_value
-
-    def side_next_position(self, position):
-        if position == 2:
-            return position
-        if position == 3:
-            return position
+        if len(self.heap) == 1:
+            return None
         else:
-            return self.side_next_position(position // 2)
+            min_value = self.heap[1]
+            max_value = self.heap.pop()
+            if len(self.heap) > 1:
+                self.heap[1] = max_value
+                self.sift_down(max_value, 1)
+            return min_value
 
-    def trickle_down(self, position):
-        node = self.heap[position]
-        rc, rc_index = self.right_child(position), self.right_child_index(position)
-        lc, lc_index = self.left_child(position), self.left_child_index(position)
-        if rc < lc:
-            if node > rc:
-                self.heap[rc_index] = node
-                self.heap[position] = rc
-                self.trickle_down(rc_index)
-        elif lc < rc:
-            if node > lc:
-                self.heap[lc_index] = node
-                self.heap[position] = lc
-                self.trickle_down(lc_index)
+    def sift_down(self, x, i):
+        c = self.min_child(i)
+        while c != 0 and self.heap[c][1] < x[1]:
+            self.heap[i] = (self.heap[c][0], self.heap[c][1])
+            i = c
+            c = self.min_child(i)
+        self.heap[i] = x
 
-    def find(self, current_index, target):
-        if current_index > self.end_position:
-            return float('-Inf')
-        if self.heap[current_index] == target:
-            return current_index
+    def pop(self):
+        return self.heap.pop()
+
+    def min_child(self, index): # returns the index of the smallest child of index
+        if 2 * index > len(self.heap):
+            return 0
         else:
-            return max(self.find(self.left_child(current_index), target), self.find(self.right_child(current_index), target))
+            lc = self.left_child(index)
+            rc = self.right_child(index)
+            if rc is None and lc is None:
+                return 0
+            if rc is None:
+                return self.left_child_index(index)
+            if lc[1] < rc[1]:
+                return self.left_child_index(index)
+            elif lc[1] > rc[1]:
+                return self.right_child_index(index)
+            else:
+                return self.left_child_index(index)
 
     def __str__(self):
         return self.heap.__str__()
@@ -163,9 +174,9 @@ class BinaryMinHeap:
 
 
 if __name__ == "__main__":
-    nodes = [4,5,3,2,1]
+    nodes = [4, 5, 3, 2, 1]
     b = BinaryMinHeap(nodes[0], nodes[1:])
-    b.delete_min()
+    b.decrease_key(-1, 2)
 
 
 
